@@ -177,6 +177,7 @@ pub struct Config {
     strip_enum_prefix: bool,
     out_dir: Option<PathBuf>,
     extern_paths: Vec<(String, String)>,
+    save_file_descriptor_set: bool,
 }
 
 impl Config {
@@ -472,6 +473,15 @@ impl Config {
         self
     }
 
+    /// Configures the compiler to save the `FileDescriptorSet` to the output directory.
+    ///
+    /// The output file name is `prost-descriptor-set` and its contents can be parsed as a
+    /// `FileDescriptorSet`.
+    pub fn save_file_descriptor_set(&mut self) -> &mut Self {
+        self.save_file_descriptor_set = true;
+        self
+    }
+
     /// Compile `.proto` files into Rust files during a Cargo build with additional code generator
     /// configuration options.
     ///
@@ -508,7 +518,12 @@ impl Config {
         // [1]: http://doc.crates.io/build-script.html#outputs-of-the-build-script
 
         let tmp = tempfile::Builder::new().prefix("prost-build").tempdir()?;
-        let descriptor_set = tmp.path().join("prost-descriptor-set");
+        let descriptor_set_dir = if self.save_file_descriptor_set {
+            target.as_path()
+        } else {
+            tmp.path()
+        };
+        let descriptor_set = descriptor_set_dir.join("prost-descriptor-set");
 
         let mut cmd = Command::new(protoc());
         cmd.arg("--include_imports")
@@ -588,6 +603,7 @@ impl default::Default for Config {
             strip_enum_prefix: true,
             out_dir: None,
             extern_paths: Vec::new(),
+            save_file_descriptor_set: false,
         }
     }
 }
